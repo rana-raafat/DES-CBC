@@ -211,14 +211,14 @@ def decrypt_DES(cipher_text, key):
         lpt, rpt = permuted_text[:len(
             permuted_text)//2], permuted_text[len(permuted_text)//2:]
 
-        for j in range(16):
+        for j in reversed(range(16)):
 
             # expansion permutation --> RPT is expanded from 32 bits to 48 bits
             expanded_RPT = permutation(rpt, expansion_permutation_table)
 
             # XOR right section and the round key
             xor_result = int(
-                ''.join([str(bits) for bits in expanded_RPT]), 2) ^ int(keys[j+15-j], 2)
+                ''.join([str(bits) for bits in expanded_RPT]), 2) ^ int(keys[j], 2)
             xor_result_bin = format(xor_result, '048b')
 
             # Divide into 8 blocks
