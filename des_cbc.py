@@ -1,6 +1,7 @@
 import os
 import random
 
+# -------------------------------- Tables  -------------------------------- #
 #Holds permutation instructions to generate 56bit key from 64bit key
 #(equivalent to P10 in lab manual)
 parity_drop_table = [56, 48, 40, 32, 24, 16, 8,
@@ -15,7 +16,7 @@ parity_drop_table = [56, 48, 40, 32, 24, 16, 8,
 
 #compression permutation table (equivalent to P8 in lab manual)
 #used to generate 48bit key from 56bit key
-copmression_Dbox = [13, 16, 10, 23, 0, 4,
+compression_Dbox = [13, 16, 10, 23, 0, 4,
     2, 27, 14, 5, 20, 9,
     22, 18, 11, 3, 25, 7,
     15, 6, 26, 19, 12, 1,
@@ -24,6 +25,7 @@ copmression_Dbox = [13, 16, 10, 23, 0, 4,
     43, 48, 38, 55, 33, 52,
     45, 41, 49, 35, 28, 31
 ]
+
 
 initial_permutation_table = [58, 50, 42, 34, 26, 18, 10, 2,	60,	52,	44,	36,	28,	20,	12,	4,
                              62, 54, 46, 38, 30, 22, 14, 6,	64,	56,	48,	40,	32,	24,	16,	8,
@@ -94,9 +96,13 @@ sboxes = [
 ]
 
 
-def encrypt(message, key, initVector, cipherBox):
+
+# -------------------------------- Functions  -------------------------------- #
+
+def encrypt(message, message_type, key, key_type, initVector, initVector_type, cipherBox):
+
     message = message.get().upper()
-    key = int(key.get())
+    key = key.get().upper()
     initVector = initVector.get().upper()
     cipher = ""
 
@@ -106,9 +112,9 @@ def encrypt(message, key, initVector, cipherBox):
 
     # TODO: Integrate the CBC and DES ciphers
 
-def decrypt(cipher, key, initVector, messageBox):
+def decrypt(cipher, cipher_type, key, key_type, initVector, init_type, messageBox):
     cipher = cipher.get().upper()
-    key = int(key.get())
+    key = key.get().upper()
     initVector = initVector.get().upper()
     message = ""
 
@@ -139,7 +145,7 @@ def generate_keys(key64):
 
         #step 5: Combine left and right and apply compression permutation
         combined = key_half1 + key_half2
-        key = [combined[copmression_Dbox[i]] for i in range(48)]
+        key = [combined[compression_Dbox[i]] for i in range(48)]
         #convert list to string
         key = ''.join(key)
         keys.append(key)
