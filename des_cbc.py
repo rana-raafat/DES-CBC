@@ -1,5 +1,9 @@
+import math
 import os
 import random
+import binascii
+from textwrap import wrap
+
 
 # -------------------------------- Tables  -------------------------------- #
 #Holds permutation instructions to generate 56bit key from 64bit key
@@ -99,32 +103,10 @@ sboxes = [
 
 # -------------------------------- Functions  -------------------------------- #
 
-def encrypt(message, message_type, key, key_type, initVector, initVector_type, cipherBox):
-
-    message = message.get().upper()
-    key = key.get().upper()
-    initVector = initVector.get().upper()
-    cipher = ""
-
-    cipher = "yet to be implemented"
-
-    cipherBox['text'] = cipher
-
-    # TODO: Integrate the CBC and DES ciphers
-
-def decrypt(cipher, cipher_type, key, key_type, initVector, init_type, messageBox):
-    cipher = cipher.get().upper()
-    key = key.get().upper()
-    initVector = initVector.get().upper()
-    message = ""
-
-    message = "yet to be implemented"
-
-    messageBox['text'] = message
-
 def generate_keys(key64):
     #step 1: Generate 56 bit key from 64 bit key using parity drop table
     #convert key64 to string
+    print("KEY BINARY",key64)
     key56 = [key64[parity_drop_table[i]] for i in range(56)]
 
     #step 2: Split key into two halves
@@ -262,25 +244,11 @@ def decrypt_DES(bin_text, key):
     return plaintext
 
 
-def encrypt_CBC(plaintext, iv, key):
-    
-    # CONVERT THE INITIAL VALUE FROM BYTES TO BINARY
-    # Convert the IV from bytes to integer ("big" indicates that the MSB is at the start)
-    # Convert the IV from integer to binary
-    iv_binary = bin(int.from_bytes(iv, "big"))
-    
-    # CONVERT THE PLAINTEXT STRING TO BINARY
-    # Convert each character to its ASCII equivilant with the ord() function
-    # Convert the integer into a binary number and join it with the previous characters with format() and join()
-    plaintext_bin = ''.join(format(ord(i), '08b') for i in plaintext)
-
-    # PADDING THE BINARY PLAINTEXT
-    # TODO: implement padding for when the plaintext length is not a multiple of 64 
-
+def encrypt_CBC(message_bin, iv_binary, key):
     # NUMBER OF BLOCKS
     # Calculate the number of 64 bit blocks 
     # // is used to floor the number or convert it from float to integer
-    no_of_blocks = len(plaintext_bin)//64 
+    no_of_blocks = len(message_bin)//64 
 
     # CBC ENCRYPTION
     # The IV is considered as the initial ciphertext block used for the first XOR operation
@@ -290,9 +258,9 @@ def encrypt_CBC(plaintext, iv, key):
     
     for i in range(no_of_blocks):
 
-        # XOR of the ith block of plaintext (e.g. from bit 0 to bit 64)
+        # XOR of the ith block of message (e.g. from bit 0 to bit 64)
         # with the previous ciphertext block
-        xor_result = int(plaintext_bin[i*64:(i+1)*64], 2) ^ int(''.join([str(bits) for bits in ciphertext_block]), 2)
+        xor_result = int(message_bin[i*64:(i+1)*64], 2) ^ int(''.join([str(bits) for bits in ciphertext_block]), 2)
 
         # The result is converted to binary, the first two characters "0b" are removed,
         # and if there were 0s at the beginning of the number that were removed they will be filled with zfill
@@ -304,26 +272,10 @@ def encrypt_CBC(plaintext, iv, key):
         # The result is also concatenated to the ciphertext
         ciphertext_bin += ''.join([str(bits) for bits in ciphertext_block])
 
-    # TODO: Convert the binary ciphertext into characters
     return ciphertext_bin
 
 
-def decrypt_CBC(ciphertext, iv, key):
-    
-    # CONVERT THE INITIAL VALUE FROM BYTES TO BINARY
-    # Convert the IV from bytes to integer ("big" indicates that the MSB is at the start)
-    # Convert the IV from integer to binary
-    iv_binary = bin(int.from_bytes(iv, "big"))
-
-    # CONVERT THE CIPHERTEXT STRING TO BINARY
-    # Convert each character to its ASCII equivilant with the ord() function
-    # Convert the integer into a binary number and join it with the previous characters with format() and join()
-    # ciphertext_bin = ''.join(format(ord(i), '08b') for i in ciphertext)
-    ciphertext_bin = ciphertext
-
-    # PADDING?
-    # TODO: Not sure if this could be needed
-
+def decrypt_CBC(ciphertext_bin, iv_binary, key):
     # NUMBER OF BLOCKS
     # Calculate the number of 64 bit blocks 
     # // is used to floor the number or convert it from float to integer
@@ -333,7 +285,7 @@ def decrypt_CBC(ciphertext, iv, key):
     # The IV is the first block used before the first ciphertext block
     prev_block = iv_binary
     
-    plaintext_bin = ""
+    message_bin = ""
 
 
     for i in range(no_of_blocks):
@@ -351,13 +303,14 @@ def decrypt_CBC(ciphertext, iv, key):
         # and if there were 0s at the beginning of the number that were removed they will be filled with zfill
         xor_result_bin = bin(xor_result)[2:].zfill(64) 
         
-        # The result is concatenated to the decrypted plaintext
-        plaintext_bin += xor_result_bin
+        # The result is concatenated to the decrypted message
+        message_bin += xor_result_bin
         
         prev_block = curr_block
 
-    # TODO: Convert the binary plaintext into characters
-    return plaintext_bin
+    return message_bin
+
+
 
 def get_sbox_value(row, col, sbox_num):
     value = sboxes[sbox_num][row][col]
@@ -368,33 +321,185 @@ def permutation(bin_text, table):
     return [bin_text[i-1] for i in table]
 
 
-#-----------------------MAIN-----------------------#
-#sample key input
-key = "0101101001011010010111001001101001011010010110100101101001011010"
+# ------------------------------- ROOT FUNCTIONS ------------------------------- #
+# ------------------ ENCRYPT ------------------ #
+def encrypt(message, message_type, key, key_type, iv, iv_type, cipherBox):
+    message = message.get().replace(' ', '')
+    message_type = message_type.get()
+    '''
+    message = "helloworldhellow"
+    message_type = 1
+    '''
+    key = key.get().replace(' ', '')
+    key_type = key_type.get()
+    '''
+    key = "0101101001011010010111001001101001011010010110100101101001011010"
+    key_type = 3
+    '''
+    iv = iv.get().replace(' ', '')
+    iv_type = iv_type.get()
+    '''
+    # Generate a random number that is suitable for cryptographic use
+    # TODO: Make sure that urandom is safe to use and know why (PRNG, etc...)
+    # CONVERT THE INITIAL VALUE FROM BYTES TO BINARY
+    # Convert the IV from bytes to integer ("big" indicates that the MSB is at the start)
+    # Convert the IV from integer to binary
+    iv_binary = os.urandom(8).bin(int.from_bytes(iv, "big"))    
+    '''
+    cipher=""
+    # ----- MESSAGE CONVERSIONS ----- #
+    if(message_type == 1):
+        # CONVERT THE STRING TO BINARY
+        # Convert each character to its ASCII equivilant with the ord() function
+        # Convert the integer into a binary number and join it with the previous characters with format() and join()
+        message_bin = ''.join(format(ord(i), '08b') for i in message)
+    elif(message_type == 2):
+        # CONVERT THE HEX TO BINARY
+        message_bin = "{0:08b}".format(int(message, 16))
+    elif(message_type ==3):
+        message_bin = message
 
-# Generate a random number that is suitable for cryptographic use
-# TODO: Make sure that urandom is safe to use and know why (PRNG, etc...)
-iv = os.urandom(8)
+    # ----- KEY CONVERSIONS ----- #
+    if(key_type == 1):
+        key_bin = ''.join(format(ord(i), '08b') for i in key)
+    elif(key_type == 2):
+        key_bin = "{0:08b}".format(int(key, 16))
+    elif(key_type ==3):
+        key_bin = key
 
-# NOTE: This string's length is divisible by 64 so it works
-plaintext = "hello"
+    # ----- IV CONVERSIONS ----- #
+    if(iv_type == 1):
+        iv_binary = ''.join(format(ord(i), '08b') for i in iv)
+    elif(iv_type == 2):
+        iv_binary = "{0:08b}".format(int(iv, 16))
+    elif(iv_type ==3):
+        iv_binary = iv
 
-encrypted = encrypt_CBC(plaintext, iv, key)
-print("ENCRYPTED: ", encrypted)
+    # ----- PKCS7 PADDING ----- #
+    block_size=64
+    no_of_blocks = math.ceil(len(message_bin)/float(block_size))
+    pad_value = int(no_of_blocks * block_size - len(message_bin))
+    # print(pad_value)
+    if pad_value == 0:
+       message_bin = message_bin + chr(block_size) * block_size
+    else:
+        message_bin = message_bin + chr(pad_value) * pad_value
+    # ------------------- #
 
-decrypted = decrypt_CBC(encrypted, iv, key)
-print("DECRYPTED: ", decrypted)
+    cipher_bin = encrypt_CBC(message_bin, iv_binary, key_bin)
 
-# For comparison only, we display the plaintext in binary
-print("PLAINTEXT: ", ''.join(format(ord(i), '08b') for i in plaintext))
+    # ----- CONVERT CIPHER BACK TO MATCH MESSAGE TYPE ----- #
+    if(message_type == 1):
+        # CONVERT FROM BINARY TO STRING
+        cipher = ''.join(chr(int(cipher_bin[i:i+8],2)) for i in range(0,len(cipher_bin),8))
+        # cipher = int('0b'+cipher_bin, 2).to_bytes((int('0b'+cipher_bin, 2).bit_length()+7) // 8, 'big').decode()
+    elif(message_type == 2):
+        # CONVERT FROM BINARY TO HEX
+        cipher = '%0*X' % ((len(cipher_bin) + 3) // 4, int(cipher_bin, 2))
+    elif(message_type == 3):
+        cipher = cipher_bin
 
-#Key Generation Test
-# print("-------------------------")
-# print("Key Generation Test")
-# print("-------------------------")
-# print("Input Key: ", key)
-# print("Generated Keys: " )
-# keys = generate_keys(key)
-# for i in range(16):
-#     print("Round " + str(i+1) + ": ", end = "")
-#     print(keys[i])
+
+    # ----- CONSOLE DISPLAYS ----- #
+
+    print("MESSAGE BINARY: ", message_bin)    
+    '''
+    #Key Generation Test
+    print("-------------------------")
+    print("Key Generation Test")
+    print("-------------------------")
+    print("Input Key: ", key_bin)
+    print("Generated Keys: " )
+    keys = generate_keys(key_bin)
+    for i in range(16):
+        print("Round " + str(i+1) + ": ", end = "")
+        print(keys[i])
+    '''
+    print("ENCRYPTED BINARY: ", cipher_bin)
+    print("ENCRYPTED:", cipher)
+
+    
+    cipherBox['text'] = cipher
+
+
+
+# ------------------ DECRYPT ------------------ #
+
+def decrypt(cipher, cipher_type, key, key_type, iv, iv_type, messageBox):
+    cipher = cipher.get().replace(' ', '')
+    cipher_type = cipher_type.get()
+   
+    key = key.get().replace(' ', '')
+    key_type = key_type.get()
+   
+    iv = iv.get().replace(' ', '')
+    iv_type = iv_type.get()
+
+    message=""
+
+    # ----- CIPHER CONVERSIONS ----- #
+    if(cipher_type == 1):
+       cipher_bin = ''.join(format(ord(i), '08b') for i in cipher)
+    elif(cipher_type == 2):
+        cipher_bin = "{0:08b}".format(int(cipher, 16))
+    elif(cipher_type ==3):
+        cipher_bin = cipher
+
+    # ----- KEY CONVERSIONS ----- #
+    if(key_type == 1):
+        key_bin = ''.join(format(ord(i), '08b') for i in key)
+    elif(key_type == 2):
+        key_bin = "{0:08b}".format(int(key, 16))
+    elif(key_type ==3):
+        key_bin = key
+
+    # ----- IV CONVERSIONS ----- #
+    if(iv_type == 1):
+        iv_binary = ''.join(format(ord(i), '08b') for i in iv)
+    elif(iv_type == 2):
+        iv_binary = "{0:08b}".format(int(iv, 16))
+    elif(iv_type ==3):
+        iv_binary = iv
+
+# TODO: figure if needed at all? if yes, remove padding? add padding?
+    # # ----- PKCS7 PADDING ----- #
+    # block_size=64
+    # no_of_blocks = math.ceil(len(cipher_bin)/float(block_size))
+    # pad_value = int(no_of_blocks * block_size - len(cipher_bin))
+    # if pad_value == 0:
+    #    cipher_bin = cipher_bin + chr(block_size) * block_size
+    # else:
+    #     cipher_bin = cipher_bin + chr(pad_value) * pad_value
+    # # ------------------- #
+
+    message_bin = decrypt_CBC(cipher_bin, iv_binary, key_bin)
+
+    # ----- CONVERT CIPHER BACK TO MATCH CIPHER TYPE ----- #
+    if(cipher_type == 1):
+        message = ''.join(chr(int(message_bin[i:i+8],2)) for i in range(0,len(message_bin),8))
+    elif(cipher_type == 2):
+        message = '%0*X' % ((len(message_bin) + 3) // 4, int(message_bin, 2))
+    elif(cipher_type == 3):
+        message = message_bin
+
+
+    # ----- CONSOLE DISPLAYS ----- #
+
+    print("CIPHER BINARY: ", cipher_bin)    
+    '''
+    #Key Generation Test
+    print("-------------------------")
+    print("Key Generation Test")
+    print("-------------------------")
+    print("Input Key: ", key_bin)
+    print("Generated Keys: " )
+    keys = generate_keys(key_bin)
+    for i in range(16):
+        print("Round " + str(i+1) + ": ", end = "")
+        print(keys[i])
+    '''
+    print("DECRYPTED BINARY: ", message_bin)
+    print("DECRYPTED: ", message)
+
+    messageBox['text'] = message
+

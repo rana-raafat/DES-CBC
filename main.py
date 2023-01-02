@@ -1,9 +1,16 @@
 from tkinter import *
 import tkinter.ttk as ttk
 import tkinter.font as font
-
-
 from des_cbc import encrypt, decrypt
+
+def character_limit(entry_text, entry_type):
+    if len(entry_text.get()) > 0:
+        if(entry_type.get() == 1):
+            entry_text.set(entry_text.get().replace(' ', '')[:8])
+        elif(entry_type.get() == 2):
+            entry_text.set(entry_text.get().replace(' ', '')[:16])
+        elif(entry_type.get() == 3):
+            entry_text.set(entry_text.get().replace(' ', '')[:64])
 
 def main():
     window = Tk()
@@ -87,6 +94,8 @@ def main():
     E23['font']= font.Font(family='Helvetica', size=11)
     E23.place(x=1420, y=200)
 
+    enc_key.trace("w", lambda *args: character_limit(enc_key, enc_key_type))
+
     # --------- IV --------- #
 
     enc_initVector = StringVar()
@@ -115,6 +124,8 @@ def main():
     E33['font']= font.Font(family='Helvetica', size=11)
     E33.place(x=1420, y=270)
 
+    enc_initVector.trace("w", lambda *args: character_limit(enc_initVector, enc_initVector_type))
+
     # --------- Result --------- #
 
     enc_cipherLabel = Label(text='Resulting Ciphertext:')
@@ -122,7 +133,7 @@ def main():
     enc_cipherLabel.place(x=25, y=310)
 
     enc_cipherBox = Label()
-    enc_cipherBox.configure(background='#FFFFFF', width=115,  font=50, fg='red', justify='left')
+    enc_cipherBox.configure(background='#FFFFFF', width=115, height=1, font=50, fg='red', justify='left', wraplengt=1250)
     enc_cipherBox.place(x=225, y=310)
 
     # --------- Button --------- #
@@ -194,6 +205,9 @@ def main():
     D23['font']= font.Font(family='Helvetica', size=11)
     D23.place(x=1420, y=570)
 
+    dec_key.trace("w", lambda *args: character_limit(dec_key, dec_key_type))
+
+
     # --------- IV --------- #
 
     dec_initVector = StringVar()
@@ -222,6 +236,8 @@ def main():
     D33['font']= font.Font(family='Helvetica', size=11)
     D33.place(x=1420, y=640)
 
+    dec_initVector.trace("w", lambda *args: character_limit(dec_initVector, dec_initVector_type))
+
     # --------- Result --------- #
 
     dec_messageLabel = Label(text='Resulting Message:')
@@ -229,7 +245,7 @@ def main():
     dec_messageLabel.place(x=25, y=680)
 
     dec_messageBox = Label()
-    dec_messageBox.configure(background='#FFFFFF', width=115,  font=50, fg='red', justify='left')
+    dec_messageBox.configure(background='#FFFFFF', width=115, height=1, font=50, fg='red', justify='left', wraplengt=1250)
     dec_messageBox.pack(anchor="w")
     dec_messageBox.place(x=225, y=680)
 
