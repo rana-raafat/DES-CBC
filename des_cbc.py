@@ -106,7 +106,6 @@ sboxes = [
 def generate_keys(key64):
     #step 1: Generate 56 bit key from 64 bit key using parity drop table
     #convert key64 to string
-    print("KEY BINARY",key64)
     key56 = [key64[parity_drop_table[i]] for i in range(56)]
 
     #step 2: Split key into two halves
@@ -379,11 +378,8 @@ def encrypt(message, message_type, key, key_type, iv, iv_type, cipherBox):
     block_size=64
     no_of_blocks = math.ceil(len(message_bin)/float(block_size))
     pad_value = int(no_of_blocks * block_size - len(message_bin))
-    # print(pad_value)
-    if pad_value == 0:
-       message_bin = message_bin + chr(block_size) * block_size
-    else:
-        message_bin = message_bin + chr(pad_value) * pad_value
+    temp = ''.join(chr(int(message_bin[i:i+8],2)) for i in range(0,len(message_bin),8))
+    message_bin = ''.join(format(ord(i), '08b') for i in (temp + chr(pad_value) * pad_value))
     # ------------------- #
 
     cipher_bin = encrypt_CBC(message_bin, iv_binary, key_bin)
@@ -392,7 +388,7 @@ def encrypt(message, message_type, key, key_type, iv, iv_type, cipherBox):
     if(message_type == 1):
         # CONVERT FROM BINARY TO STRING
         cipher = ''.join(chr(int(cipher_bin[i:i+8],2)) for i in range(0,len(cipher_bin),8))
-        # cipher = int('0b'+cipher_bin, 2).to_bytes((int('0b'+cipher_bin, 2).bit_length()+7) // 8, 'big').decode()
+        #  cipher = int(cipher_bin, 2).to_bytes((int(cipher_bin, 2).bit_length()+7) // 8, 'big').decode(encoding='ascii',errors='ignore')
     elif(message_type == 2):
         # CONVERT FROM BINARY TO HEX
         cipher = '%0*X' % ((len(cipher_bin) + 3) // 4, int(cipher_bin, 2))
@@ -461,22 +457,30 @@ def decrypt(cipher, cipher_type, key, key_type, iv, iv_type, messageBox):
     elif(iv_type ==3):
         iv_binary = iv
 
-# TODO: figure if needed at all? if yes, remove padding? add padding?
-    # # ----- PKCS7 PADDING ----- #
-    # block_size=64
-    # no_of_blocks = math.ceil(len(cipher_bin)/float(block_size))
-    # pad_value = int(no_of_blocks * block_size - len(cipher_bin))
-    # if pad_value == 0:
-    #    cipher_bin = cipher_bin + chr(block_size) * block_size
-    # else:
-    #     cipher_bin = cipher_bin + chr(pad_value) * pad_value
-    # # ------------------- #
+    # ------------------- #
 
     message_bin = decrypt_CBC(cipher_bin, iv_binary, key_bin)
+
+    # ----- PKCS7 UNPADDING ----- #
+    temp = ''.join(chr(int(message_bin[i:i+8],2)) for i in range(0,len(message_bin),8))
+    ch = temp[-1]
+    while(temp[-1] == ch):
+        if(temp[-1] == temp[-2]):
+            x=list(temp)
+            x.pop()
+            temp="".join(x)
+        else:
+            x=list(temp)
+            x.pop()
+            temp="".join(x)
+            break
+    message_bin = ''.join(format(ord(i), '08b') for i in temp)
+    
 
     # ----- CONVERT CIPHER BACK TO MATCH CIPHER TYPE ----- #
     if(cipher_type == 1):
         message = ''.join(chr(int(message_bin[i:i+8],2)) for i in range(0,len(message_bin),8))
+        # message = int(message_bin, 2).to_bytes((int(message_bin, 2).bit_length()+7) // 8, 'big').decode(encoding='ascii',errors='ignore')
     elif(cipher_type == 2):
         message = '%0*X' % ((len(message_bin) + 3) // 4, int(message_bin, 2))
     elif(cipher_type == 3):
